@@ -22,7 +22,7 @@ DATA_DIR: Path = get_data_dir()
 RAW_DIR: Path = DATA_DIR / "raw"
 PROCESSED_DIR: Path = DATA_DIR / "processed"
 KAGGLE_DIR: Path = DATA_DIR / "kaggle"
-FIGURES_DIR: Path = REPO_ROOT / "reports" / "figures"
+FIGURES_DIR: Path = Path(os.environ.get("FIGURES_DIR", REPO_ROOT / "reports" / "figures"))
 DASHBOARD_DATA_DIR: Path = REPO_ROOT / "dashboard" / "data"
 
 RANDOM_STATE: int = 42
