@@ -1,0 +1,212 @@
+table,field name,code/format,label,note
+collision,police_force,1,Metropolitan Police,
+collision,police_force,3,Cumbria,
+collision,police_force,4,Lancashire,
+collision,police_force,5,Merseyside,
+collision,police_force,6,Greater Manchester,
+collision,police_force,7,Cheshire,
+collision,police_force,10,Northumbria,
+collision,police_force,11,Durham,
+collision,police_force,12,North Yorkshire,
+collision,police_force,13,West Yorkshire,
+collision,police_force,14,South Yorkshire,
+collision,police_force,16,Humberside,
+collision,police_force,17,Cleveland,
+collision,police_force,20,West Midlands,
+collision,police_force,21,Staffordshire,
+collision,police_force,22,West Mercia,
+collision,police_force,23,Warwickshire,
+collision,police_force,30,Derbyshire,
+collision,police_force,31,Nottinghamshire,
+collision,police_force,32,Lincolnshire,
+collision,police_force,33,Leicestershire,
+collision,police_force,34,Northamptonshire,
+collision,police_force,35,Cambridgeshire,
+collision,police_force,36,Norfolk,
+collision,police_force,37,Suffolk,
+collision,police_force,40,Bedfordshire,
+collision,police_force,41,Hertfordshire,
+collision,police_force,42,Essex,
+collision,police_force,43,Thames Valley,
+collision,police_force,44,Hampshire,
+collision,police_force,45,Surrey,
+collision,police_force,46,Kent,
+collision,police_force,47,Sussex,
+collision,police_force,48,City of London,
+collision,police_force,50,Devon and Cornwall,
+collision,police_force,52,Avon and Somerset,
+collision,police_force,53,Gloucestershire,
+collision,police_force,54,Wiltshire,
+collision,police_force,55,Dorset,
+collision,police_force,60,North Wales,
+collision,police_force,61,Gwent,
+collision,police_force,62,South Wales,
+collision,police_force,63,Dyfed-Powys,
+collision,police_force,91,Northern,category discontinued in 2019
+collision,police_force,92,Grampian,category discontinued in 2019
+collision,police_force,93,Tayside,category discontinued in 2019
+collision,police_force,94,Fife,category discontinued in 2019
+collision,police_force,95,Lothian and Borders,category discontinued in 2019
+collision,police_force,96,Central,category discontinued in 2019
+collision,police_force,97,Strathclyde,category discontinued in 2019
+collision,police_force,98,Dumfries and Galloway,category discontinued in 2019
+collision,police_force,99,Police Scotland,category introduced in 2019
+collision,collision_severity,1,Fatal,
+collision,collision_severity,2,Serious,
+collision,collision_severity,3,Slight,
+collision,day_of_week,1,Sunday,
+collision,day_of_week,2,Monday,
+collision,day_of_week,3,Tuesday,
+collision,day_of_week,4,Wednesday,
+collision,day_of_week,5,Thursday,
+collision,day_of_week,6,Friday,
+collision,day_of_week,7,Saturday,
+collision,first_road_class,1,Motorway,
+collision,first_road_class,2,A(M),
+collision,first_road_class,3,A,
+collision,first_road_class,4,B,
+collision,first_road_class,5,C,
+collision,first_road_class,6,Unclassified,
+collision,first_road_class,-1,Data missing or out of range,
+collision,road_type,1,Roundabout,
+collision,road_type,2,One way street,
+collision,road_type,3,Dual carriageway,
+collision,road_type,6,Single carriageway,
+collision,road_type,7,Slip road,
+collision,road_type,9,Unknown,
+collision,road_type,12,One way street/Slip road,
+collision,road_type,-1,Data missing or out of range,
+collision,speed_limit,,,"20,30,40,50,60,70 are the only valid speed limits on public highways"
+collision,speed_limit,-1,Data missing or out of range,
+collision,speed_limit,99,unknown (self reported),
+collision,junction_detail_historic,0,Not at junction or within 20 metres,data collected in the 2011 STATS19 specification (or earlier)
+collision,junction_detail_historic,1,Roundabout,data collected in the 2011 STATS19 specification (or earlier)
+collision,junction_detail_historic,2,Mini-roundabout,data collected in the 2011 STATS19 specification (or earlier)
+collision,junction_detail_historic,3,T or staggered junction,data collected in the 2011 STATS19 specification (or earlier)
+collision,junction_detail_historic,5,Slip road,data collected in the 2011 STATS19 specification (or earlier)
+collision,junction_detail_historic,6,Crossroads,data collected in the 2011 STATS19 specification (or earlier)
+collision,junction_detail_historic,7,More than 4 arms (not roundabout),data collected in the 2011 STATS19 specification (or earlier)
+collision,junction_detail_historic,8,Private drive or entrance,data collected in the 2011 STATS19 specification (or earlier)
+collision,junction_detail_historic,9,Other junction,data collected in the 2011 STATS19 specification (or earlier)
+collision,junction_detail_historic,99,unknown (self reported),data collected in the 2011 STATS19 specification (or earlier)
+collision,junction_detail_historic,-1,Data missing or out of range,data collected in the 2011 STATS19 specification (or earlier)
+collision,junction_control,0,Not at junction or within 20 metres,
+collision,junction_control,1,Authorised person,
+collision,junction_control,2,Auto traffic signal,
+collision,junction_control,3,Stop sign,
+collision,junction_control,4,Give way or uncontrolled,
+collision,junction_control,-1,Data missing or out of range,
+collision,junction_control,9,unknown (self reported),
+collision,second_road_class,0,Not at junction or within 20 metres,
+collision,second_road_class,1,Motorway,
+collision,second_road_class,2,A(M),
+collision,second_road_class,3,A,
+collision,second_road_class,4,B,
+collision,second_road_class,5,C,
+collision,second_road_class,6,Unclassified,
+collision,second_road_class,9,Unknown (self rep only),
+collision,second_road_class,-1,Data missing or out of range,
+collision,light_conditions,1,Daylight,
+collision,light_conditions,4,Darkness - lights lit,
+collision,light_conditions,5,Darkness - lights unlit,
+collision,light_conditions,6,Darkness - no lighting,
+collision,light_conditions,7,Darkness - lighting unknown,
+collision,light_conditions,-1,Data missing or out of range,
+collision,weather_conditions,1,Fine no high winds,
+collision,weather_conditions,2,Raining no high winds,
+collision,weather_conditions,3,Snowing no high winds,
+collision,weather_conditions,4,Fine + high winds,
+collision,weather_conditions,5,Raining + high winds,
+collision,weather_conditions,6,Snowing + high winds,
+collision,weather_conditions,7,Fog or mist,
+collision,weather_conditions,8,Other,
+collision,weather_conditions,9,Unknown,
+collision,weather_conditions,-1,Data missing or out of range,
+collision,road_surface_conditions,1,Dry,
+collision,road_surface_conditions,2,Wet or damp,
+collision,road_surface_conditions,3,Snow,
+collision,road_surface_conditions,4,Frost or ice,
+collision,road_surface_conditions,5,Flood over 3cm. deep,
+collision,road_surface_conditions,6,Oil or diesel,
+collision,road_surface_conditions,7,Mud,
+collision,road_surface_conditions,-1,Data missing or out of range,
+collision,road_surface_conditions,9,unknown (self reported),
+collision,special_conditions_at_site,0,,
+collision,special_conditions_at_site,1,Auto traffic signal - out,
+collision,special_conditions_at_site,2,Auto signal part defective,
+collision,special_conditions_at_site,3,Road sign or marking defective or obscured,
+collision,special_conditions_at_site,4,Roadworks,
+collision,special_conditions_at_site,5,Road surface defective,
+collision,special_conditions_at_site,6,Oil or diesel,
+collision,special_conditions_at_site,7,Mud,
+collision,special_conditions_at_site,-1,Data missing or out of range,
+collision,special_conditions_at_site,9,unknown (self reported),
+collision,urban_or_rural_area,1,Urban,field introduced in 1994
+collision,urban_or_rural_area,2,Rural,field introduced in 1994
+collision,urban_or_rural_area,3,Unallocated,field introduced in 1994
+collision,urban_or_rural_area,-1,Data missing or out of range,field introduced in 1994
+collision,did_police_officer_attend_scene_of_collision,1,Yes,
+collision,did_police_officer_attend_scene_of_collision,2,No,
+collision,did_police_officer_attend_scene_of_collision,3,No - accident was reported using a self completion  form (self rep only),
+collision,did_police_officer_attend_scene_of_collision,-1,Data missing or out of range,
+collision,trunk_road_flag,1,Trunk (Roads managed by Highways England),
+collision,trunk_road_flag,2,Non-trunk,
+collision,trunk_road_flag,-1,Data missing or out of range,
+collision,collision_injury_based,0,Based on severity reporting,
+collision,collision_injury_based,1,Based on Injury code reporting,
+casualty,casualty_class,1,Driver or rider,
+casualty,casualty_class,2,Passenger,
+casualty,casualty_class,3,Pedestrian,
+casualty,sex_of_casualty,1,Male,
+casualty,sex_of_casualty,2,Female,
+casualty,sex_of_casualty,9,unknown (self reported),
+casualty,sex_of_casualty,-1,Data missing or out of range,
+casualty,age_band_of_casualty,1,0 - 5,
+casualty,age_band_of_casualty,2,6 - 10,
+casualty,age_band_of_casualty,3,11 - 15,
+casualty,age_band_of_casualty,4,16 - 20,
+casualty,age_band_of_casualty,5,21 - 25,
+casualty,age_band_of_casualty,6,26 - 35,
+casualty,age_band_of_casualty,7,36 - 45,
+casualty,age_band_of_casualty,8,46 - 55,
+casualty,age_band_of_casualty,9,56 - 65,
+casualty,age_band_of_casualty,10,66 - 75,
+casualty,age_band_of_casualty,11,Over 75,
+casualty,age_band_of_casualty,-1,Data missing or out of range,
+casualty,casualty_severity,1,Fatal,
+casualty,casualty_severity,2,Serious,
+casualty,casualty_severity,3,Slight,
+casualty,casualty_type,0,Pedestrian,
+casualty,casualty_type,1,Cyclist,
+casualty,casualty_type,2,Motorcycle 50cc and under rider or passenger,
+casualty,casualty_type,3,Motorcycle 125cc and under rider or passenger,introduced in 1999 specification
+casualty,casualty_type,4,Motorcycle over 125cc and up to 500cc rider or  passenger,introduced in 2005 specification
+casualty,casualty_type,5,Motorcycle over 500cc rider or passenger,introduced in 2005 specification
+casualty,casualty_type,8,Taxi/Private hire car occupant,introduced in 2005 specification
+casualty,casualty_type,9,Car occupant,introduced in 2005 specification
+casualty,casualty_type,10,Minibus (8 - 16 passenger seats) occupant,introduced in 1999 specification
+casualty,casualty_type,11,Bus or coach occupant (17 or more pass seats),
+casualty,casualty_type,16,Horse rider,introduced in 1999 specification
+casualty,casualty_type,17,Agricultural vehicle occupant,introduced in 1999 specification
+casualty,casualty_type,18,Tram occupant,introduced in 1999 specification
+casualty,casualty_type,19,Van / Goods vehicle (3.5 tonnes mgw or under) occupant,
+casualty,casualty_type,20,Goods vehicle (over 3.5t. and under 7.5t.) occupant,introduced in 1999 specification
+casualty,casualty_type,21,Goods vehicle (7.5 tonnes mgw and over) occupant,introduced in 1999 specification
+casualty,casualty_type,22,Mobility scooter rider,introduced in 2011 specification
+casualty,casualty_type,23,Electric motorcycle rider or passenger,introduced in 2011 specification
+casualty,casualty_type,23,Personal Powered Transporter,introduced in 2024 specification
+casualty,casualty_type,90,Other vehicle occupant,introduced in 2011 specification
+casualty,casualty_type,97,Motorcycle - unknown cc rider or passenger,introduced in 2011 specification
+casualty,casualty_type,98,Goods vehicle (unknown weight) occupant,introduced in 2011 specification
+casualty,casualty_type,99,Unknown vehicle type (self rep only),introduced in 2011 specification
+casualty,casualty_type,103,Motorcycle - Scooter (1979-1998),dropped in 1999 specification
+casualty,casualty_type,104,Motorcycle (1979-1998),dropped in 1999 specification
+casualty,casualty_type,105,Motorcycle - Combination (1979-1998),dropped in 1999 specification
+casualty,casualty_type,106,Motorcycle over 125cc (1999-2004),dropped in 2005 specification
+casualty,casualty_type,108,Taxi (excluding private hire cars) (1979-2004),dropped in 2005 specification
+casualty,casualty_type,109,Car (including private hire cars) (1979-2004),dropped in 2005 specification
+casualty,casualty_type,110,Minibus/Motor caravan (1979-1998),dropped in 1999 specification
+casualty,casualty_type,113,Goods over 3.5 tonnes (1979-1998),dropped in 1999 specification
+casualty,casualty_type,-1,Data missing or out of range,
+casualty,casualty_injury_based,0,Based on severity reporting,
+casualty,casualty_injury_based,1,Based on Injury code reporting,
