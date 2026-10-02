@@ -242,3 +242,25 @@ def test_ras0101_reader_roundtrip(tmp_path: Path) -> None:
     assert out.loc[2013, "ksi_collisions_adjusted"] == pytest.approx(24000.25)
     assert out.loc[2013, "killed"] == 1713
     assert pd.isna(out.loc[1926, "fatal_collisions"])  # "[x]" -> NaN
+
+
+def test_dashboard_data(
+    collisions: tuple[pd.DataFrame, dict], casualties: tuple[pd.DataFrame, dict], tmp_path: Path
+) -> None:
+    coll, _ = collisions
+    cas, _ = casualties
+    sizes = clean.write_dashboard_data(coll, cas, tmp_path)
+    expected = {"monthly_collisions_by_severity.csv", "yearly_totals.csv", "by_speed_limit.csv",
+                "by_light_conditions.csv", "by_road_type.csv", "by_region.csv",
+                "fatal_collision_points.csv"}
+    assert set(sizes) == expected
+    assert all(size < config.DASHBOARD_MAX_BYTES for size in sizes.values())
+    yearly = pd.read_csv(tmp_path / "yearly_totals.csv")
+    parts = yearly[["fatal_collisions", "serious_collisions", "slight_collisions"]].sum(axis=1)
+    assert (parts == yearly["collisions"]).all()  # the DAX reconciliation check must be 0
+    for stem in ("by_speed_limit", "by_light_conditions", "by_road_type", "by_region"):
+        table = pd.read_csv(tmp_path / f"{stem}.csv")
+        assert table["collisions"].sum() == len(coll), stem
+        assert pd.to_datetime(table["year_start"]).dt.month.eq(1).all()
+    points = pd.read_csv(tmp_path / "fatal_collision_points.csv")
+    assert points["latitude"].between(*config.GB_LAT_RANGE).all()

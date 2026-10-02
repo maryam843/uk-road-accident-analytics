@@ -23,7 +23,9 @@ RAW_DIR: Path = DATA_DIR / "raw"
 PROCESSED_DIR: Path = DATA_DIR / "processed"
 KAGGLE_DIR: Path = DATA_DIR / "kaggle"
 FIGURES_DIR: Path = Path(os.environ.get("FIGURES_DIR", REPO_ROOT / "reports" / "figures"))
-DASHBOARD_DATA_DIR: Path = REPO_ROOT / "dashboard" / "data"
+DASHBOARD_DATA_DIR: Path = Path(
+    os.environ.get("DASHBOARD_DATA_DIR", REPO_ROOT / "dashboard" / "data")
+)
 
 RANDOM_STATE: int = 42
 
@@ -84,6 +86,8 @@ CASUALTIES_PARQUET = "casualties_2005_2019.parquet"
 MONTHLY_PARQUET = "monthly_collisions_2005_2019.parquet"
 YEARLY_PARQUET = "yearly_aggregates_2005_2019.parquet"
 CLEAN_LOG_FILE = "CLEAN_LOG.json"
+
+DASHBOARD_MAX_BYTES: int = 5 * 1024 * 1024
 
 CHUNKSIZE: int = 500_000
 

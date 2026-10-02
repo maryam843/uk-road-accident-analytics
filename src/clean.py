@@ -489,7 +489,7 @@ def _is(values: pd.Series, code: int) -> pd.Series:
     return values.eq(code).fillna(False).astype(bool)
 
 
-def _severity_counts(df: pd.DataFrame, by: str | pd.Series) -> pd.DataFrame:
+def _severity_counts(df: pd.DataFrame, by: pd.Series | list[pd.Series]) -> pd.DataFrame:
     """Collision counts by severity plus the adjusted fatal-or-serious count."""
     sev = df["collision_severity"]
     non_fatal = ~_is(sev, SEVERITY_FATAL)
@@ -548,6 +548,72 @@ def yearly_aggregates(collisions: pd.DataFrame, casualties: pd.DataFrame) -> pd.
     out[count_cols] = out[count_cols].astype("int64")
     out.index.name = "year"
     return out
+
+
+# ---------------------------------------------------------------------------
+# Dashboard extracts (small aggregated CSVs for Power BI)
+# ---------------------------------------------------------------------------
+DASHBOARD_BREAKDOWNS: dict[str, str] = {
+    "by_speed_limit": "speed_limit",
+    "by_light_conditions": "light_conditions_label",
+    "by_road_type": "road_type_label",
+    "by_region": "region",
+}
+
+
+def dashboard_tables(collisions: pd.DataFrame, casualties: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """Aggregated tables for the dashboard, keyed by file stem.
+
+    Every table carries a real date column (``month`` or ``year_start``) so it can be
+    related to the DAX ``Date`` table and time-intelligence functions work.
+    """
+    from src.features import region_from_police_force  # local import: avoids a cycle
+
+    collisions = collisions.assign(region=region_from_police_force(collisions["police_force"]))
+    year = collisions["collision_year"].astype(int).rename("year")
+    tables: dict[str, pd.DataFrame] = {}
+
+    monthly = monthly_series(collisions).reset_index()
+    tables["monthly_collisions_by_severity"] = monthly
+
+    yearly = yearly_aggregates(collisions, casualties).reset_index()
+    yearly.insert(1, "year_start", pd.to_datetime(yearly["year"].astype(str) + "-01-01"))
+    tables["yearly_totals"] = yearly
+
+    for stem, column in DASHBOARD_BREAKDOWNS.items():
+        category = collisions[column].astype("object").where(collisions[column].notna(), "Missing")
+        if column == "speed_limit":
+            category = category.map(lambda v: v if v == "Missing" else f"{int(v)} mph")
+        frame = _severity_counts(collisions, [year, category.rename("category")]).reset_index()
+        frame.insert(1, "year_start", pd.to_datetime(frame["year"].astype(str) + "-01-01"))
+        tables[stem] = frame
+
+    fatal = collisions[_is(collisions["collision_severity"], SEVERITY_FATAL) & collisions["coord_valid"]]
+    tables["fatal_collision_points"] = fatal[
+        ["collision_index", "date", "collision_year", "latitude", "longitude", "region", "speed_limit"]
+    ].rename(columns={"collision_year": "year"})
+    return tables
+
+
+def write_dashboard_data(
+    collisions: pd.DataFrame, casualties: pd.DataFrame, out_dir: Path | None = None
+) -> dict[str, int]:
+    """Write :func:`dashboard_tables` as CSVs and check each is under 5 MB.
+
+    Returns:
+        ``{file name: size in bytes}``.
+    """
+    out_dir = Path(out_dir) if out_dir else config.DASHBOARD_DATA_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    sizes: dict[str, int] = {}
+    for stem, table in dashboard_tables(collisions, casualties).items():
+        path = out_dir / f"{stem}.csv"
+        table.to_csv(path, index=False, float_format="%.4f", date_format="%Y-%m-%d")
+        sizes[path.name] = path.stat().st_size
+        if sizes[path.name] > config.DASHBOARD_MAX_BYTES:
+            raise ValueError(f"{path.name} is {sizes[path.name]:,} bytes (> 5 MB limit)")
+    logger.info("Wrote %d dashboard CSVs to %s", len(sizes), out_dir)
+    return sizes
 
 
 # ---------------------------------------------------------------------------
@@ -666,14 +732,35 @@ def run(data_dir: Path | None = None, chunksize: int = config.CHUNKSIZE) -> dict
     monthly_series(collisions).to_parquet(processed / config.MONTHLY_PARQUET)
     yearly_aggregates(collisions, casualties).to_parquet(processed / config.YEARLY_PARQUET)
 
-    log = {"collisions": coll_stats, "casualties": cas_stats, "excluded_fields": EXCLUDED_FIELDS}
+    log = {
+        "collisions": coll_stats,
+        "casualties": cas_stats,
+        "dashboard_csv_bytes": write_dashboard_data(collisions, casualties),
+        "excluded_fields": EXCLUDED_FIELDS,
+    }
     (processed / config.CLEAN_LOG_FILE).write_text(json.dumps(log, indent=2, default=int))
     return log
 
 
-def main() -> None:
-    """CLI entry point: ``python -m src.clean``."""
+def main(argv: list[str] | None = None) -> None:
+    """CLI entry point: ``python -m src.clean [--dashboard-only]``."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Clean STATS19 2005-2019 and build aggregates.")
+    parser.add_argument(
+        "--dashboard-only",
+        action="store_true",
+        help="rebuild dashboard/data CSVs from existing processed Parquet files",
+    )
+    args = parser.parse_args(argv)
     config.setup_logging()
+    if args.dashboard_only:
+        processed = config.get_data_dir() / "processed"
+        write_dashboard_data(
+            pd.read_parquet(processed / config.COLLISIONS_PARQUET),
+            pd.read_parquet(processed / config.CASUALTIES_PARQUET),
+        )
+        return
     run()
 
 

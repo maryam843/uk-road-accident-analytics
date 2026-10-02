@@ -159,7 +159,7 @@ def classification_metrics(
     """Threshold-free and thresholded metrics for the positive (KSI) class.
 
     Accuracy is returned next to the majority-class baseline accuracy on the same rows,
-    because accuracy alone is misleading at roughly 1 KSI in 7 collisions.
+    because accuracy alone is misleading when KSI is the minority class.
     """
     y_true = np.asarray(y_true).astype(int)
     pred = (np.asarray(proba) >= threshold).astype(int)
