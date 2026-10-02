@@ -8,18 +8,27 @@ Author: Maryam · Code: MIT · Data: Open Government Licence v3.0
 
 ## Key results
 
-> **Status: TBD.** This version of the repository was built and tested without access to the
-> DfT data files (see [PROGRESS.md](PROGRESS.md), "Mode"). Every result below is filled in
-> only from an executed notebook cell. No number here is estimated.
+> Built from the DfT release downloaded on 2026-10-02 (2005-2019 only). Every number below is
+> copied from an executed notebook cell, as printed; the few shortened ones say how they were
+> rounded. Plain accuracy is deliberately not reported.
 
-| Track | Result | Source |
+**Severity model:** pre-event conditions carry limited signal (PR-AUC 0.28 vs 0.20 base rate,
+rounded from 0.2798 and 0.1981); logistic regression performs almost as well as LightGBM.
+
+**Forecasting:** on 2017-2019, SARIMA beats seasonal naive (MAE 529.39 vs 1,107.72). In the 2015
+replica check ETS was the most accurate, and SARIMA's residuals still contain autocorrelation.
+
+| Track | Result | Source (notebook · section) |
 |---|---|---|
-| Data quality | Pipeline vs RAS0101 collision counts, largest yearly difference: TBD | `notebooks/01_reconciliation.ipynb` |
-| Statistics | Strongest KSI association (Cramér's V): TBD | `notebooks/02_eda_and_tests.ipynb` |
-| Count model | Poisson dispersion and model used (Poisson / Negative Binomial): TBD | `notebooks/02_eda_and_tests.ipynb` |
-| Forecasting | Test MAE 2017-2019, seasonal naive vs ETS vs SARIMA: TBD | `notebooks/03_forecasting.ipynb` |
-| Forecasting | 2015 total forecast from data to 2014 vs official: TBD | `notebooks/03_forecasting.ipynb` |
-| Severity model | Test PR-AUC 2017-2019 (LightGBM, logistic regression, base rate): TBD | `notebooks/04_severity_model.ipynb` |
+| Data quality | All 15 years match RAS0101 exactly: collisions, fatal, fatal-or-serious (unadjusted and adjusted), people killed, casualties. Largest yearly difference **0.000%** (2,287,427 collisions in total) | 01 · Pipeline vs RAS0101 |
+| Effect sizes | KSI × light / weather / road type: significant but **negligible** in size (Cramér's V 0.065 / 0.032 / 0.052) | 02 · Statistical tests |
+| Count model | Poisson dispersion 7.86, so **Negative Binomial** (α 0.0181). 2019 vs 2005 daily-rate IRR 0.591 (95% CI 0.579-0.604) | 02 · Count model |
+| Forecast, test 2017-2019 | **SARIMA(1,1,1)x(1,0,2,12): MAE 529.39, MAPE 5.26%**, vs seasonal naive MAE 1,107.72, MAPE 11.17% (ETS: 602.34, 6.01%) | 03 · Final test |
+| Forecast, 2015 replica | Error vs official 2015 total (140,056): ETS +1.4%, SARIMA +2.4%, seasonal naive +4.5% | 03 · Replica check |
+| Forecast, residuals | Ljung-Box p 0.000 (lag 12) and 0.002 (lag 24): some autocorrelation left unmodelled | 03 · Residual diagnostics |
+| KSI model, test 2017-2019 | PR-AUC **LightGBM 0.2798**, logistic regression 0.2719, dummy / base rate 0.1981. Balanced accuracy LightGBM 0.5736, logistic 0.5712, dummy 0.5000 | 04 · Test results |
+| KSI model, top 5 SHAP | Not at a junction (↑), daylight (↓), 60 mph limit (↑), roundabout (↓), rural (↑). Model behaviour, not causes | 04 · SHAP |
+| KSI model, robustness | Against DfT-adjusted severity: LightGBM weighted PR-AUC 0.3163 vs adjusted base rate 0.2228 (logistic 0.3093) | 04 · Robustness check |
 
 ## Dashboard
 
@@ -151,10 +160,22 @@ overall and per test year. SHAP explains the model; it does not establish causes
 - **Under-reporting.** Many slight injuries never reach the police, so slight counts (and the
   denominator of every KSI share) are undercounts. Serious injuries are under-reported too,
   to a lesser degree.
-- **Severity reporting change.** From 2016, injury-based reporting (CRASH/COPA) records more
-  injuries as serious. KSI trend charts use DfT's adjusted figures and are labelled
-  "adjusted for changes in police severity reporting (DfT)". The classifier's test years
-  carry this known label shift, so metrics are shown per year.
+- **Severity reporting change (label shift).** From 2016, injury-based reporting (CRASH/COPA)
+  records more injuries as serious. The reported KSI share rises from 0.141 (2005) to 0.210
+  (2019), while the DfT-adjusted share moves from 0.198 to 0.230. KSI trend charts use DfT's
+  adjusted figures and are labelled "adjusted for changes in police severity reporting (DfT)".
+  The classifier is trained on 2005-2015 labels and tested on 2017-2019 labels, so metrics are
+  shown per year.
+- **Result of the label-shift check.** Rescored against DfT-adjusted severity, without
+  retraining, LightGBM's weighted PR-AUC is 0.3163 against an adjusted base rate of 0.2228
+  (reported-label: 0.2798 vs 0.1981). The reporting change moves the level of the scores. It
+  does not create or remove the model's limited signal.
+- **Limited predictive signal.** Pre-event conditions only modestly separate KSI from slight
+  collisions (PR-AUC 0.2798 vs a 0.1981 base rate). The model ranks risk; it cannot predict
+  outcomes for individual collisions.
+- **Forecast residuals.** The SARIMA residuals fail the Ljung-Box test (p 0.000 at lag 12), so
+  its uncertainty would be understated.
+- **SHAP is descriptive.** It explains what the model learned from correlations, not causes.
 - **Exposure is not modelled.** Counts are not divided by traffic volume, so "more collisions"
   does not mean "more dangerous per journey".
 - **2020 onwards is excluded.**
