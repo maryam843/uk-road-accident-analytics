@@ -17,3 +17,6 @@ __pycache__/
 .ruff_cache/
 .env
 .venv/
+
+# Local run logs
+logs_*.txt
