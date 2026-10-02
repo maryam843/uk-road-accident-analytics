@@ -111,6 +111,12 @@ MISSING_LABEL_PATTERN = re.compile(r"data missing or out of range|unknown \(self
 LEGACY_RENAMES: dict[str, str] = {
     "collision_reference": "collision_ref_no",
     "collision_ref": "collision_ref_no",
+    # The 2026 release header spells the severity adjustment fields with "_severity_",
+    # while the 2025 data guide lists them without it.
+    "collision_adjusted_severity_serious": "collision_adjusted_serious",
+    "collision_adjusted_severity_slight": "collision_adjusted_slight",
+    "casualty_adjusted_severity_serious": "casualty_adjusted_serious",
+    "casualty_adjusted_severity_slight": "casualty_adjusted_slight",
 }
 
 SEVERITY_FATAL, SEVERITY_SERIOUS, SEVERITY_SLIGHT = 1, 2, 3

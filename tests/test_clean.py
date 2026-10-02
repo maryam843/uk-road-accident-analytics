@@ -51,6 +51,11 @@ def casualties(code_list: pd.DataFrame, collisions: tuple[pd.DataFrame, dict]) -
         ("Light_Conditions", "light_conditions"),
         ("speed_limit", "speed_limit"),
         ("lsoa_of_accident_location", "lsoa_of_collision_location"),
+        # spelling used in the real 2026 release header
+        ("collision_adjusted_severity_serious", "collision_adjusted_serious"),
+        ("collision_adjusted_severity_slight", "collision_adjusted_slight"),
+        ("casualty_adjusted_severity_serious", "casualty_adjusted_serious"),
+        ("casualty_adjusted_severity_slight", "casualty_adjusted_slight"),
     ],
 )
 def test_normalise_column_name(raw: str, expected: str) -> None:
@@ -264,3 +269,18 @@ def test_dashboard_data(
         assert pd.to_datetime(table["year_start"]).dt.month.eq(1).all()
     points = pd.read_csv(tmp_path / "fatal_collision_points.csv")
     assert points["latitude"].between(*config.GB_LAT_RANGE).all()
+
+
+def test_real_release_header_spelling_is_read(tmp_path: Path, code_list: pd.DataFrame) -> None:
+    """The 2026 release writes *_adjusted_severity_*; the values must still be loaded."""
+    raw = pd.read_csv(FIXTURES / "collisions_fixture.csv", dtype=str).rename(
+        columns={
+            "collision_adjusted_serious": "collision_adjusted_severity_serious",
+            "collision_adjusted_slight": "collision_adjusted_severity_slight",
+        }
+    )
+    path = tmp_path / "collisions_2026_header.csv"
+    raw.to_csv(path, index=False)
+    coll, _ = clean.process_collisions(path, code_list)
+    assert coll["collision_adjusted_serious"].notna().all()
+    assert coll["collision_adjusted_slight"].notna().all()
