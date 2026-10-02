@@ -1,0 +1,19 @@
+# Data (never committed)
+data/raw/
+data/processed/
+data/kaggle/
+*.pbix
+
+# CSV only allowed in dashboard/data and tests/fixtures
+*.csv
+!dashboard/data/*.csv
+!tests/fixtures/*.csv
+
+# Python / Jupyter
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+.env
+.venv/
