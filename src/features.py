@@ -192,3 +192,50 @@ def check_feature_coverage(
     for col in numeric or []:
         assert f"num__{col}" in names, f"{col} missing from output"
     return names
+
+
+# ---------------------------------------------------------------------------
+# Categorical context features for clustering and anomaly detection (notebooks 06-07)
+# ---------------------------------------------------------------------------
+HOUR_BANDS: list[tuple[int, int, str]] = [
+    (0, 5, "00-05 night"),
+    (6, 9, "06-09 morning peak"),
+    (10, 15, "10-15 daytime"),
+    (16, 19, "16-19 evening peak"),
+    (20, 23, "20-23 evening"),
+]
+SPEED_BANDS: dict[int, str] = {20: "20", 30: "30", 40: "40-50", 50: "40-50", 60: "60-70", 70: "60-70"}
+CONTEXT_SOURCES: dict[str, str] = {
+    "road_type": "road_type_label",
+    "light": "light_conditions_label",
+    "weather": "weather_conditions_label",
+    "surface": "road_surface_conditions_label",
+    "junction": "junction_detail_historic_label",
+    "urban_rural": "urban_or_rural_area_label",
+}
+CONTEXT_FEATURES: list[str] = [*CONTEXT_SOURCES, "speed_band", "hour_band", "day_type"]
+MISSING_CATEGORY = "Missing"
+
+
+def hour_band(hours: pd.Series) -> pd.Series:
+    """Map hour of day (0-23) to one of :data:`HOUR_BANDS`; NaN stays NaN."""
+    lookup = {h: label for lo, hi, label in HOUR_BANDS for h in range(lo, hi + 1)}
+    return hours.astype("Int64").map(lookup, na_action="ignore").astype("object")
+
+
+def context_frame(collisions: pd.DataFrame) -> pd.DataFrame:
+    """Pre-event categorical context, one string column per :data:`CONTEXT_FEATURES`.
+
+    Missing values become the explicit category ``"Missing"``, because k-modes and the
+    one-hot encoders used with it need a value in every cell. Speed limits are banded
+    (20 / 30 / 40-50 / 60-70 mph), hours are banded, and the date gives weekday/weekend.
+    """
+    out = pd.DataFrame(index=collisions.index)
+    for feature, source in CONTEXT_SOURCES.items():
+        out[feature] = collisions[source].astype("object")
+    out["speed_band"] = collisions["speed_limit"].astype("Int64").map(SPEED_BANDS, na_action="ignore")
+    out["hour_band"] = hour_band(collisions["hour"])
+    weekend = collisions["date"].dt.dayofweek >= 5
+    out["day_type"] = np.where(weekend, "Weekend", "Weekday")
+    out.loc[collisions["date"].isna(), "day_type"] = np.nan
+    return out.astype("object").fillna(MISSING_CATEGORY)[CONTEXT_FEATURES]

@@ -64,3 +64,55 @@ def test_effect_sizes() -> None:
     assert evaluate.cohens_d(a + 1.2909944, a) == pytest.approx(1.0, rel=1e-4)
     assert evaluate.eta_squared([np.array([1.0, 1.0]), np.array([3.0, 3.0])]) == pytest.approx(1.0)
     assert evaluate.describe_effect(0.05, "cramers_v") == "negligible"
+
+
+def test_wilson_interval_matches_statsmodels() -> None:
+    from statsmodels.stats.proportion import proportion_confint
+
+    k, n = np.array([0, 3, 30, 99]), np.array([30, 40, 100, 100])
+    lo, hi = evaluate.wilson_interval(k, n)
+    ref_lo, ref_hi = proportion_confint(k, n, alpha=0.05, method="wilson")
+    assert np.allclose(lo, ref_lo) and np.allclose(hi, ref_hi)
+    assert (lo <= k / n).all() and (hi >= k / n).all()
+
+
+def test_jaccard_sets_and_flags() -> None:
+    assert evaluate.jaccard({1, 2, 3}, {2, 3, 4}) == pytest.approx(0.5)
+    assert evaluate.jaccard(np.array([1, 1, 0, 0]), np.array([0, 1, 1, 0])) == pytest.approx(1 / 3)
+    assert np.isnan(evaluate.jaccard(set(), set()))
+    with pytest.raises(ValueError):
+        evaluate.jaccard(np.array([1, 0]), np.array([1, 0, 0]))
+
+
+def test_weighted_average_precision_matches_sklearn() -> None:
+    from sklearn.metrics import average_precision_score
+
+    rng = np.random.default_rng(0)
+    y = rng.integers(0, 2, 500)
+    score = np.round(rng.random(500) + 0.3 * y, 2)  # rounding creates ties
+    w = rng.integers(0, 4, 500)
+    assert evaluate.weighted_average_precision(y, score) == pytest.approx(
+        average_precision_score(y, score))
+    assert evaluate.weighted_average_precision(y, score, w) == pytest.approx(
+        average_precision_score(y, score, sample_weight=w))
+
+
+def test_bootstrap_average_precision_is_paired_and_centred() -> None:
+    rng = np.random.default_rng(1)
+    y = rng.integers(0, 2, 2000)
+    good, noise = y + rng.normal(0, 1, 2000), rng.random(2000)
+    boot = evaluate.bootstrap_average_precision(y, {"good": good, "same": good, "noise": noise},
+                                                n_boot=50, seed=3)
+    assert boot.shape == (50, 3)
+    assert (boot["good"] == boot["same"]).all()  # same resamples for every model
+    lo, hi = evaluate.percentile_ci(boot["good"] - boot["noise"])
+    assert lo > 0
+
+
+def test_enrichment_ratio_and_bootstrap() -> None:
+    y = np.array([1, 0, 0, 0, 1, 1, 0, 0, 0, 0])
+    flag = np.array([1, 0, 0, 0, 1, 0, 0, 0, 0, 0])
+    assert evaluate.enrichment_ratio(y, flag) == pytest.approx(1.0 / 0.3)
+    ratio, lo, hi = evaluate.bootstrap_enrichment(y, flag, n_boot=200, seed=0)
+    assert ratio == pytest.approx(1.0 / 0.3) and lo <= ratio <= hi
+    assert np.isnan(evaluate.enrichment_ratio(y, np.zeros(10)))

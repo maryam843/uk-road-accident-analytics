@@ -59,3 +59,24 @@ def test_preprocessor_covers_every_feature(frame: pd.DataFrame) -> None:
     pre_cat = features.make_preprocessor(cat[:-1], min_frequency=1).fit(frame[cat])
     with pytest.raises(AssertionError):
         features.check_feature_coverage(pre_cat, cat)
+
+
+def test_context_frame_bands_and_missing() -> None:
+    coll = pd.DataFrame({
+        "road_type_label": ["Single carriageway", None],
+        "light_conditions_label": ["Daylight", "Darkness - lights lit"],
+        "weather_conditions_label": ["Fine no high winds", None],
+        "road_surface_conditions_label": ["Dry", "Wet or damp"],
+        "junction_detail_historic_label": ["Roundabout", "Not at junction or within 20 metres"],
+        "urban_or_rural_area_label": ["Urban", "Rural"],
+        "speed_limit": pd.array([50, pd.NA], dtype="Int16"),
+        "hour": pd.array([7, 23], dtype="Int8"),
+        "date": pd.to_datetime(["2019-06-01", "2019-06-03"]),  # Saturday, Monday
+    })
+    ctx = features.context_frame(coll)
+    assert list(ctx.columns) == features.CONTEXT_FEATURES
+    assert ctx["speed_band"].tolist() == ["40-50", features.MISSING_CATEGORY]
+    assert ctx["hour_band"].tolist() == ["06-09 morning peak", "20-23 evening"]
+    assert ctx["day_type"].tolist() == ["Weekend", "Weekday"]
+    assert ctx.loc[1, "road_type"] == features.MISSING_CATEGORY
+    assert not ctx.isna().any().any()

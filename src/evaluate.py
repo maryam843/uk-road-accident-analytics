@@ -234,3 +234,132 @@ def describe_effect(value: float, kind: str) -> str:
     if v < cuts[2]:
         return "medium"
     return "large"
+
+
+# ---------------------------------------------------------------------------
+# Intervals, overlap and bootstrap helpers
+# ---------------------------------------------------------------------------
+def wilson_interval(
+    successes: np.ndarray | pd.Series | int, n: np.ndarray | pd.Series | int, alpha: float = 0.05
+) -> tuple[np.ndarray, np.ndarray]:
+    """Wilson score interval for a binomial proportion (vectorised).
+
+    Returns:
+        ``(lower, upper)`` arrays. Better than the normal approximation for small ``n``
+        or proportions near 0 or 1.
+    """
+    k = np.asarray(successes, float)
+    n_arr = np.asarray(n, float)
+    z = stats.norm.ppf(1 - alpha / 2)
+    p = k / n_arr
+    denom = 1 + z**2 / n_arr
+    centre = (p + z**2 / (2 * n_arr)) / denom
+    half = z * np.sqrt(p * (1 - p) / n_arr + z**2 / (4 * n_arr**2)) / denom
+    return centre - half, centre + half
+
+
+def jaccard(a: np.ndarray | pd.Series | set, b: np.ndarray | pd.Series | set) -> float:
+    """Jaccard index |A ∩ B| / |A ∪ B| of two sets or two aligned boolean/{0,1} arrays.
+
+    Returns NaN when both sets are empty.
+    """
+    if isinstance(a, set) or isinstance(b, set):
+        sa, sb = set(a), set(b)
+        union = len(sa | sb)
+        return float(len(sa & sb) / union) if union else float("nan")
+    a_arr = np.asarray(a).astype(bool)
+    b_arr = np.asarray(b).astype(bool)
+    if a_arr.shape != b_arr.shape:
+        raise ValueError("arrays must have the same shape")
+    union = int((a_arr | b_arr).sum())
+    return float((a_arr & b_arr).sum() / union) if union else float("nan")
+
+
+class _SortedAP:
+    """Weighted average precision for one score vector, sorted once and reused.
+
+    Matches :func:`sklearn.metrics.average_precision_score` with ``sample_weight``, so a
+    bootstrap resample can be scored by passing its row counts as weights.
+    """
+
+    def __init__(self, y_true: np.ndarray, score: np.ndarray) -> None:
+        order = np.argsort(-np.asarray(score, float), kind="mergesort")
+        self.order = order
+        self.y = np.asarray(y_true, float)[order]
+        s = np.asarray(score, float)[order]
+        self.last = np.r_[np.nonzero(np.diff(s))[0], len(s) - 1]  # last row of each tie group
+
+    def __call__(self, weights: np.ndarray | None = None) -> float:
+        w = np.ones_like(self.y) if weights is None else np.asarray(weights, float)[self.order]
+        tps = np.cumsum(self.y * w)[self.last]
+        fps = np.cumsum((1 - self.y) * w)[self.last]
+        ps = tps + fps
+        precision = np.divide(tps, ps, out=np.zeros_like(tps), where=ps != 0)
+        recall = tps / tps[-1]
+        return float(np.sum(np.diff(np.r_[0.0, recall]) * precision))
+
+
+def weighted_average_precision(
+    y_true: np.ndarray, score: np.ndarray, sample_weight: np.ndarray | None = None
+) -> float:
+    """Average precision (PR-AUC) with optional row weights; equals scikit-learn's value."""
+    return _SortedAP(y_true, score)(sample_weight)
+
+
+def bootstrap_average_precision(
+    y_true: np.ndarray, scores: dict[str, np.ndarray], n_boot: int = 1000, seed: int = 42
+) -> pd.DataFrame:
+    """PR-AUC of every model on the same ``n_boot`` row resamples (paired bootstrap).
+
+    Each resample draws ``len(y_true)`` rows with replacement; the row counts are used as
+    weights, which is exactly equivalent to scoring the resampled rows. Using the same
+    resample for every model makes differences between models paired.
+
+    Returns:
+        Frame with one row per resample and one column per model.
+    """
+    y_true = np.asarray(y_true)
+    n = len(y_true)
+    scorers = {name: _SortedAP(y_true, s) for name, s in scores.items()}
+    rng = np.random.default_rng(seed)
+    rows = []
+    for _ in range(n_boot):
+        counts = np.bincount(rng.integers(0, n, n), minlength=n)
+        rows.append({name: ap(counts) for name, ap in scorers.items()})
+    return pd.DataFrame(rows)
+
+
+def percentile_ci(values: np.ndarray | pd.Series, alpha: float = 0.05) -> tuple[float, float]:
+    """Percentile bootstrap interval ``(lower, upper)``."""
+    lo, hi = np.nanpercentile(np.asarray(values, float), [100 * alpha / 2, 100 * (1 - alpha / 2)])
+    return float(lo), float(hi)
+
+
+def enrichment_ratio(y: np.ndarray, flag: np.ndarray) -> float:
+    """Share of positives among flagged rows divided by the share among all rows."""
+    y = np.asarray(y, float)
+    flag = np.asarray(flag).astype(bool)
+    if not flag.any():
+        return float("nan")
+    return float(y[flag].mean() / y.mean())
+
+
+def bootstrap_enrichment(
+    y: np.ndarray, flag: np.ndarray, n_boot: int = 1000, seed: int = 42, alpha: float = 0.05
+) -> tuple[float, float, float]:
+    """Enrichment ratio with a percentile bootstrap CI over rows.
+
+    Returns:
+        ``(ratio, lower, upper)``.
+    """
+    y = np.asarray(y, float)
+    flag = np.asarray(flag).astype(bool)
+    n = len(y)
+    rng = np.random.default_rng(seed)
+    reps = np.empty(n_boot)
+    for i in range(n_boot):
+        counts = np.bincount(rng.integers(0, n, n), minlength=n)
+        flagged = counts[flag].sum()
+        reps[i] = (counts[flag] @ y[flag] / flagged) / (counts @ y / n) if flagged else np.nan
+    lo, hi = percentile_ci(reps, alpha)
+    return enrichment_ratio(y, flag), lo, hi
