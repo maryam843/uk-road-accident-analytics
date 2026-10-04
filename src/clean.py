@@ -62,6 +62,9 @@ COLLISION_CODED_FIELDS: list[str] = [
 ]
 COLLISION_NUMERIC_FIELDS: list[str] = [
     "collision_year",
+    "first_road_number",
+    "location_easting_osgr",
+    "location_northing_osgr",
     "speed_limit",
     "number_of_vehicles",
     "number_of_casualties",
@@ -452,6 +455,10 @@ def process_collisions(
     for col in ("collision_adjusted_serious", "collision_adjusted_slight"):
         if col in df.columns:
             df[col] = df[col].astype("float32")
+    # Road number (0 = no number) and British National Grid metres; negative = missing code.
+    for col in ("first_road_number", "location_easting_osgr", "location_northing_osgr"):
+        if col in df.columns:
+            df[col] = df[col].where(df[col] >= 0).round().astype("Int32")
     sev = df["collision_severity"]
     df["ksi"] = sev.isin([SEVERITY_FATAL, SEVERITY_SERIOUS]).astype("Int8").mask(sev.isna())
     df["collision_index"] = df["collision_index"].astype("string")

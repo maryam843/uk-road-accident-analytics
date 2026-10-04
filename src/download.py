@@ -1,9 +1,10 @@
-"""Download the DfT STATS19 open data files, the data guide and table RAS0101.
+"""Download the DfT STATS19 open data files, the data guide, table RAS0101 and the AADF traffic counts.
 
 Usage::
 
-    python -m src.download            # all four files
+    python -m src.download            # all files
     python -m src.download --only guide ras0101
+    python -m src.download --only aadf aadf_metadata
 
 Downloads are streamed to ``DATA_DIR/raw`` with resume support (HTTP Range), a size
 check against the server-reported length, a SHA-256 checksum and an entry in
@@ -154,11 +155,20 @@ def targets() -> dict[str, tuple[str, str]]:
         config.LANDING_PAGE_URL, r"data-guide.*\.xlsx$", config.DATA_GUIDE_URL_FALLBACK
     )
     ras_url = discover_link(config.RAS_TABLES_PAGE_URL, r"ras0101\.ods$", config.RAS0101_URL_FALLBACK)
+    aadf_url = discover_link(
+        config.ROAD_TRAFFIC_DOWNLOADS_URL, r"/dft_traffic_counts_aadf\.zip$", config.AADF_URL_FALLBACK
+    )
+    aadf_meta_url = discover_link(
+        config.ROAD_TRAFFIC_DOWNLOADS_URL, r"all-traffic-data-metadata\.pdf$",
+        config.AADF_METADATA_URL_FALLBACK,
+    )
     return {
         "collision": (config.COLLISION_URL, config.COLLISION_RAW_FILE),
         "casualty": (config.CASUALTY_URL, config.CASUALTY_RAW_FILE),
         "guide": (guide_url, config.DATA_GUIDE_RAW_FILE),
         "ras0101": (ras_url, config.RAS0101_RAW_FILE),
+        "aadf": (aadf_url, config.AADF_RAW_FILE),
+        "aadf_metadata": (aadf_meta_url, config.AADF_METADATA_RAW_FILE),
     }
 
 
@@ -166,7 +176,8 @@ def main(argv: list[str] | None = None) -> None:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
-        "--only", nargs="+", choices=["collision", "casualty", "guide", "ras0101"], default=None
+        "--only", nargs="+",
+        choices=["collision", "casualty", "guide", "ras0101", "aadf", "aadf_metadata"], default=None,
     )
     parser.add_argument("--force", action="store_true", help="re-download existing files")
     args = parser.parse_args(argv)

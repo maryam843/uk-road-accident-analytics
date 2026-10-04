@@ -363,3 +363,62 @@ def bootstrap_enrichment(
         reps[i] = (counts[flag] @ y[flag] / flagged) / (counts @ y / n) if flagged else np.nan
     lo, hi = percentile_ci(reps, alpha)
     return enrichment_ratio(y, flag), lo, hi
+
+
+# ---------------------------------------------------------------------------
+# Rates per exposure
+# ---------------------------------------------------------------------------
+def poisson_rate_ci(
+    counts: np.ndarray | pd.Series, exposure: np.ndarray | pd.Series, alpha: float = 0.05,
+    per: float = 1.0,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Rate ``counts / exposure * per`` with an exact (Garwood) Poisson confidence interval.
+
+    Returns:
+        ``(rate, lower, upper)``. The lower bound is 0 when the count is 0.
+    """
+    k = np.asarray(counts, float)
+    e = np.asarray(exposure, float)
+    lower = np.where(k > 0, stats.chi2.ppf(alpha / 2, 2 * k) / 2, 0.0)
+    upper = stats.chi2.ppf(1 - alpha / 2, 2 * k + 2) / 2
+    return k / e * per, lower / e * per, upper / e * per
+
+
+def empirical_bayes_rates(
+    counts: np.ndarray | pd.Series, exposure: np.ndarray | pd.Series,
+    groups: np.ndarray | pd.Series | None = None,
+) -> pd.DataFrame:
+    """Poisson-gamma empirical Bayes rates, prior fitted by method of moments within groups.
+
+    For units with counts k_i and exposures E_i, the prior mean is the pooled rate
+    m = sum(k) / sum(E) and the prior variance is the moment estimate
+    A = sum(E_i (r_i - m)^2) / sum(E) - m / mean(E) (Marshall, 1991), floored at 0.
+    The posterior mean rate is a weighted average of the raw rate r_i = k_i / E_i and m,
+    with weight w_i = A / (A + m / E_i): units with little exposure are pulled strongly
+    towards their group's mean, well-measured units hardly at all.
+
+    Returns:
+        Frame (same index as ``counts`` if it is a Series) with ``raw_rate``, ``prior_mean``,
+        ``prior_var``, ``weight`` and ``eb_rate`` (all per unit of exposure).
+    """
+    index = counts.index if isinstance(counts, pd.Series) else None
+    k = np.asarray(counts, float)
+    e = np.asarray(exposure, float)
+    if np.any(e <= 0):
+        raise ValueError("exposure must be positive")
+    g = np.zeros(len(k), int) if groups is None else pd.factorize(np.asarray(groups))[0]
+    out = pd.DataFrame({"raw_rate": k / e}, index=index)
+    prior_mean = np.empty(len(k))
+    prior_var = np.empty(len(k))
+    for grp in np.unique(g):
+        sel = g == grp
+        m = k[sel].sum() / e[sel].sum()
+        s2 = np.sum(e[sel] * (k[sel] / e[sel] - m) ** 2) / e[sel].sum()
+        prior_mean[sel] = m
+        prior_var[sel] = max(s2 - m / e[sel].mean(), 0.0)
+    weight = np.where(prior_var > 0, prior_var / (prior_var + prior_mean / e), 0.0)
+    out["prior_mean"] = prior_mean
+    out["prior_var"] = prior_var
+    out["weight"] = weight
+    out["eb_rate"] = weight * out["raw_rate"].to_numpy() + (1 - weight) * prior_mean
+    return out

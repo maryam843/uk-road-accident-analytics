@@ -284,3 +284,10 @@ def test_real_release_header_spelling_is_read(tmp_path: Path, code_list: pd.Data
     coll, _ = clean.process_collisions(path, code_list)
     assert coll["collision_adjusted_serious"].notna().all()
     assert coll["collision_adjusted_slight"].notna().all()
+
+
+def test_road_number_and_grid_reference_kept(collisions: tuple[pd.DataFrame, dict]) -> None:
+    coll, _ = collisions
+    for col in ("first_road_number", "location_easting_osgr", "location_northing_osgr"):
+        assert str(coll[col].dtype) == "Int32"
+        assert (coll[col].dropna() >= 0).all()  # negative missing codes became NA

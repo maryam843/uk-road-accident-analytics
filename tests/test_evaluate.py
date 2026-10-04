@@ -116,3 +116,35 @@ def test_enrichment_ratio_and_bootstrap() -> None:
     ratio, lo, hi = evaluate.bootstrap_enrichment(y, flag, n_boot=200, seed=0)
     assert ratio == pytest.approx(1.0 / 0.3) and lo <= ratio <= hi
     assert np.isnan(evaluate.enrichment_ratio(y, np.zeros(10)))
+
+
+def test_poisson_rate_ci_exact() -> None:
+    rate, lo, hi = evaluate.poisson_rate_ci(np.array([0, 10]), np.array([1e8, 2e8]), per=1e8)
+    assert rate.tolist() == pytest.approx([0.0, 5.0])
+    assert lo[0] == 0 and hi[0] == pytest.approx(3.6889, abs=1e-3)  # Garwood upper for k=0
+    assert lo[1] == pytest.approx(4.7954 / 2, abs=1e-3) and hi[1] == pytest.approx(18.3904 / 2, abs=1e-3)
+
+
+def test_empirical_bayes_shrinks_low_exposure() -> None:
+    rng = np.random.default_rng(0)
+    exposure = np.r_[np.full(200, 1.0), np.full(200, 100.0)]
+    true_rate = rng.gamma(shape=4, scale=0.5, size=400)  # heterogeneous true rates, mean 2
+    counts = rng.poisson(true_rate * exposure)
+    eb = evaluate.empirical_bayes_rates(pd.Series(counts), exposure)
+    assert eb["prior_var"].iloc[0] > 0
+    assert eb["weight"].iloc[:200].mean() < eb["weight"].iloc[200:].mean()
+    # EB is closer to the truth than the raw rate for the low-exposure units.
+    raw_err = np.abs(eb["raw_rate"].iloc[:200] - true_rate[:200]).mean()
+    eb_err = np.abs(eb["eb_rate"].iloc[:200] - true_rate[:200]).mean()
+    assert eb_err < raw_err
+    # A homogeneous rate gives full shrinkage to the pooled mean.
+    flat = evaluate.empirical_bayes_rates(np.full(50, 5), np.full(50, 2.0))
+    assert np.allclose(flat["eb_rate"], 2.5) and (flat["weight"] == 0).all()
+
+
+def test_empirical_bayes_groups_and_validation() -> None:
+    eb = evaluate.empirical_bayes_rates(np.array([1, 1, 10, 10]), np.array([1.0, 1, 1, 1]),
+                                        groups=np.array(["a", "a", "b", "b"]))
+    assert eb["prior_mean"].tolist() == [1.0, 1.0, 10.0, 10.0]
+    with pytest.raises(ValueError):
+        evaluate.empirical_bayes_rates(np.array([1]), np.array([0.0]))

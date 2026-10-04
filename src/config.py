@@ -56,6 +56,20 @@ RAS0101_URL_FALLBACK = (
     "https://assets.publishing.service.gov.uk/media/6a6398df9a419980593b2bdf/ras0101.ods"
 )
 
+# Road traffic statistics (DfT, OGL v3.0): annual average daily flow (AADF) by count point.
+# download.py reads the current links from the downloads page; these are the links it showed
+# when this code was written.
+ROAD_TRAFFIC_DOWNLOADS_URL = "https://roadtraffic.dft.gov.uk/downloads"
+AADF_URL_FALLBACK = (
+    "https://storage.googleapis.com/dft-statistics/road-traffic/downloads/data-gov-uk/"
+    "dft_traffic_counts_aadf.zip"
+)
+AADF_METADATA_URL_FALLBACK = (
+    "https://storage.googleapis.com/dft-statistics/road-traffic/all-traffic-data-metadata.pdf"
+)
+AADF_RAW_FILE = "dft_traffic_counts_aadf.zip"
+AADF_METADATA_RAW_FILE = "all-traffic-data-metadata.pdf"
+
 COLLISION_RAW_FILE = "dft-road-casualty-statistics-collision-1979-latest-published-year.csv"
 CASUALTY_RAW_FILE = "dft-road-casualty-statistics-casualty-1979-latest-published-year.csv"
 DATA_GUIDE_RAW_FILE = "data_guide.xlsx"

@@ -5,7 +5,7 @@ are gitignored.
 
 | Folder | Contents | Created by |
 |---|---|---|
-| `raw/` | DfT collision and casualty CSVs (1979-latest), the data guide `.xlsx`, `ras0101.ods`, `DOWNLOAD_LOG.json` | `python -m src.download` |
+| `raw/` | DfT collision and casualty CSVs (1979-latest), the data guide `.xlsx`, `ras0101.ods`, the AADF traffic counts `dft_traffic_counts_aadf.zip` with `all-traffic-data-metadata.pdf` ([DfT road traffic downloads](https://roadtraffic.dft.gov.uk/downloads), OGL v3.0), `DOWNLOAD_LOG.json` | `python -m src.download` |
 | `processed/` | `collisions_2005_2019.parquet`, `casualties_2005_2019.parquet`, monthly and yearly aggregates, `CLEAN_LOG.json` | `python -m src.clean` |
 | `kaggle/` | Optional: `ukroadaccident.csv`, supplied by hand, used only by notebook 00 to document why it was rejected | you |
 
