@@ -117,7 +117,76 @@ DIVIDE ( SUM ( by_speed_limit[ksi_collisions_adjusted] ), SUM ( by_speed_limit[c
 
 Repeat with `by_light_conditions`, `by_road_type` and `by_region` (same column names).
 
-## 7. Build guide
+## 7. Round 3 tables: KSI share, gains, hotspots, data trust
+
+These tables do not join to the Date table (no shared grain), except `ksi_share_yearly[year]`
+and `data_trust[year]`, which can relate to a `Date[Year]` column if wanted.
+
+**KSI share.** Always divide sums; never average a share column across rows, or small levels
+count as much as big ones.
+
+```DAX
+KSI Share (by factor) =
+DIVIDE ( SUM ( ksi_rate_by_factor[ksi] ), SUM ( ksi_rate_by_factor[collisions] ) )
+
+-- Over any set of years, from the yearly totals (reported and adjusted).
+KSI Share reported = DIVIDE ( SUM ( yearly_totals[ksi_collisions] ), SUM ( yearly_totals[collisions] ) )
+KSI Share adjusted = DIVIDE ( SUM ( yearly_totals[ksi_collisions_adjusted] ), SUM ( yearly_totals[collisions] ) )
+```
+
+`ksi_share_yearly` already holds one share per year: plot `ksi_share_reported` and
+`ksi_share_adjusted` as two lines on `year` (no aggregation needed, set "Don't summarize"),
+with the adjusted-KSI footnote below.
+
+**Cumulative gains (model_gains).** Decile 1 holds the highest predicted risk. The random
+baseline is the cumulative share of collisions (a straight diagonal).
+
+```DAX
+Cumulative KSI Share =
+VAR d = MAX ( model_gains[decile] )
+RETURN
+    DIVIDE (
+        CALCULATE ( SUM ( model_gains[ksi] ), FILTER ( ALL ( model_gains ), model_gains[decile] <= d ) ),
+        CALCULATE ( SUM ( model_gains[ksi] ), ALL ( model_gains ) )
+    )
+
+Cumulative Collision Share (baseline) =
+VAR d = MAX ( model_gains[decile] )
+RETURN
+    DIVIDE (
+        CALCULATE ( SUM ( model_gains[collisions] ), FILTER ( ALL ( model_gains ), model_gains[decile] <= d ) ),
+        CALCULATE ( SUM ( model_gains[collisions] ), ALL ( model_gains ) )
+    )
+
+Lift =
+DIVIDE (
+    DIVIDE ( SUM ( model_gains[ksi] ), SUM ( model_gains[collisions] ) ),
+    DIVIDE ( CALCULATE ( SUM ( model_gains[ksi] ), ALL ( model_gains ) ),
+             CALCULATE ( SUM ( model_gains[collisions] ), ALL ( model_gains ) ) )
+)
+```
+
+The CSV also carries `cum_share_ksi`, `cum_share_collisions` and `lift` precomputed, so the
+measures can be checked against it.
+
+**Hotspots (hex_hotspots).** Flags are blank where a hexagon was not tested; `COUNTROWS` with a
+`= TRUE ()` filter ignores blanks.
+
+```DAX
+Count Hotspots = CALCULATE ( COUNTROWS ( hex_hotspots ), hex_hotspots[count_hot] = TRUE () )
+Rate Hotspots = CALCULATE ( COUNTROWS ( hex_hotspots ), hex_hotspots[rate_hot] = TRUE () )
+Count AND Rate Hotspots =
+CALCULATE ( COUNTROWS ( hex_hotspots ), hex_hotspots[count_hot] = TRUE (), hex_hotspots[rate_hot] = TRUE () )
+```
+
+**Data trust.**
+
+```DAX
+Pipeline vs RAS0101 (should be 0) = SUM ( data_trust[pipeline_minus_ras0101] )
+Kaggle vs RAS0101 = SUM ( data_trust[kaggle_minus_ras0101] )
+```
+
+## 8. Build guide
 
 | Page | Visual | Fields / measures | Notes |
 |---|---|---|---|
@@ -127,6 +196,14 @@ Repeat with `by_light_conditions`, `by_road_type` and `by_region` (same column n
 | Conditions | 4 bar charts | Y = `category`; X = `KSI Share adjusted (by …)` | sort descending; tooltip adds collision count |
 | Map | Map / Azure Map | Latitude = `fatal_collision_points[latitude]`, Longitude = `…[longitude]` | for a scatter-style map: **X = longitude, Y = latitude** |
 | Data quality | 2 cards | `Severity Reconciliation Check`, `Casualty Reconciliation Check` | should read 0 |
+| Data quality | Clustered columns + card | X = `data_trust[year]`, Y = `kaggle_rows`, `pipeline_rows`, `ras0101_collisions`; card `Pipeline vs RAS0101 (should be 0)` | 2008 = 0 and the 2012 duplicates show in the Kaggle series |
+| Severity | Line chart | X = `ksi_share_yearly[year]`, Y = `ksi_share_reported`, `ksi_share_adjusted` | adjusted-KSI footnote below |
+| Severity | Bar chart with error bars | Y = `ksi_rate_by_factor[level]` (filter one `factor`), X = `ksi_share`, error bars `wilson_low` / `wilson_high` | one factor per visual |
+| Forecast | Line chart | X = `forecast_vs_actual[month]`, Y = `actual`, `sarima_forecast`, `seasonal_naive_forecast`; error band from `sarima_95_lower` / `_upper` (and 80%) | one axis only |
+| Model | Line chart | X = `model_gains[decile]`, Y = `Cumulative KSI Share`, `Cumulative Collision Share (baseline)` | gains curve; `Lift` in the tooltip |
+| Hotspots | Map | Latitude / longitude from `hex_hotspots`; colour by `count_hot` and `rate_hot` (two visuals or a field parameter) | "rate" = KSI per vehicle-km on major roads only |
+| Hotspots | Table | `top_links_risk` columns `rank`, `road_name`, `local_authority`, `eb_ksi_rate_per_100m_vkm`, `ci_low`, `ci_high`, `vehicle_km` | label the rate "per 100 million vehicle-km" |
+| Anomalies | Table | `anomalous_days` columns `date`, `weekday`, `collisions`, `ksi`, `snow_share`, `ice_snow_share`, `most_unusual_feature` | |
 
 **Filter scope**
 - A `Date[Year]` slicer on each page, synced across pages (View → Sync slicers). It filters

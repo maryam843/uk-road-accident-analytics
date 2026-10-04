@@ -1,0 +1,18 @@
+factor,level,collisions,ksi,ksi_share,wilson_low,wilson_high
+speed limit (mph),20,43080,6867,0.159401,0.155975,0.162888
+speed limit (mph),30,396976,64659,0.162879,0.161733,0.164031
+speed limit (mph),40,54119,10567,0.195255,0.191937,0.198616
+speed limit (mph),50,26368,5462,0.207145,0.202296,0.212079
+speed limit (mph),60,84088,22960,0.273047,0.270046,0.276069
+speed limit (mph),70,42079,7557,0.179591,0.175953,0.183287
+speed limit (mph),Missing,120,8,0.066667,0.034165,0.126051
+urban or rural,Missing,1,0,0.0,0.0,0.793451
+urban or rural,Rural,216615,49155,0.226923,0.225164,0.228692
+urban or rural,Unallocated,100,21,0.21,0.141657,0.2998
+urban or rural,Urban,430114,68904,0.160199,0.159106,0.161299
+light conditions,Darkness - lighting unknown,12074,1911,0.158274,0.151872,0.164893
+light conditions,Darkness - lights lit,131120,24993,0.190612,0.188495,0.192747
+light conditions,Darkness - lights unlit,4253,928,0.218199,0.206043,0.230863
+light conditions,Darkness - no lighting,33167,9359,0.282178,0.27736,0.287047
+light conditions,Daylight,466201,80888,0.173505,0.17242,0.174594
+light conditions,Missing,15,1,0.066667,0.011867,0.298165
