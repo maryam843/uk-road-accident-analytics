@@ -105,6 +105,27 @@ def seasonal_naive(train: pd.Series, horizon: int, season: int = 12) -> pd.Serie
     return pd.Series(values, index=index, name="seasonal_naive")
 
 
+def trend_seasonal_profile(
+    train: pd.Series, horizon: int, profile_years: int = 3, season: int = 12
+) -> pd.Series:
+    """Linear trend on annual totals times the mean monthly profile of the last years.
+
+    ``train`` must be monthly and hold whole calendar years (January to December). A straight
+    line is fitted to the annual totals and extended to each forecast year; each year is split
+    over the months with the mean share of each month in the last ``profile_years`` years.
+    """
+    if len(train) % season or train.index[0].month != 1 or len(train) < season * profile_years:
+        raise ValueError(f"training series must hold at least {profile_years} whole years")
+    years = train.to_numpy(float).reshape(-1, season)
+    annual = years.sum(axis=1)
+    slope, intercept = np.polyfit(np.arange(len(annual)), annual, 1)
+    profile = (years[-profile_years:] / annual[-profile_years:, None]).mean(axis=0)
+    step = np.arange(horizon)
+    values = (intercept + slope * (len(annual) + step // season)) * profile[step % season]
+    index = pd.date_range(train.index[-1], periods=horizon + 1, freq=train.index.freq)[1:]
+    return pd.Series(values, index=index, name="trend_seasonal_profile")
+
+
 ForecastFn = Callable[[pd.Series, int], pd.Series]
 
 

@@ -28,6 +28,19 @@ def test_seasonal_naive_repeats_last_season() -> None:
     assert fc.iloc[12:].tolist() == [12.0, 13.0]
 
 
+def test_trend_seasonal_profile_extends_trend_and_profile() -> None:
+    profile = np.array([1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2]) / 18
+    annual = 1200.0 - 60.0 * np.arange(4)  # exact straight line
+    idx = pd.date_range("2010-01-01", periods=48, freq="MS")
+    s = pd.Series(np.concatenate([a * profile for a in annual]), index=idx)
+    fc = evaluate.trend_seasonal_profile(s, horizon=24)
+    assert fc.index[0] == pd.Timestamp("2014-01-01")
+    np.testing.assert_allclose(fc.iloc[:12], 960.0 * profile)
+    np.testing.assert_allclose(fc.iloc[12:], 900.0 * profile)
+    with pytest.raises(ValueError):
+        evaluate.trend_seasonal_profile(s.iloc[1:], horizon=12)
+
+
 def test_rolling_origin_backtest_never_sees_future() -> None:
     idx = pd.date_range("2010-01-01", periods=48, freq="MS")
     s = pd.Series(np.arange(48.0), index=idx)
