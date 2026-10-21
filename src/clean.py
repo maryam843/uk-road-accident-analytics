@@ -625,7 +625,7 @@ def write_dashboard_data(
         sizes[path.name] = path.stat().st_size
         if sizes[path.name] > config.DASHBOARD_MAX_BYTES:
             raise ValueError(f"{path.name} is {sizes[path.name]:,} bytes (> 5 MB limit)")
-    logger.info("Wrote %d dashboard CSVs to %s", len(sizes), out_dir)
+    logger.info("Wrote %d dashboard CSVs to %s", len(sizes), config.display_path(out_dir))
     return sizes
 
 

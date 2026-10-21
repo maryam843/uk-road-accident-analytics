@@ -118,6 +118,15 @@ ATTRIBUTION = (
 )
 
 
+def display_path(path: Path | str) -> str:
+    """``path`` relative to the repo root when it is inside the repo, else unchanged (for logs)."""
+    path = Path(path)
+    try:
+        return path.resolve().relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return str(path)
+
+
 def setup_logging(level: int = logging.INFO) -> None:
     """Configure root logging once with a compact format."""
     logging.basicConfig(

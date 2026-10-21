@@ -134,7 +134,7 @@ def stream_download(url: str, dest: Path, max_retries: int = 4) -> dict[str, obj
         "sha256": sha256_of(dest),
         "downloaded_at_utc": datetime.now(UTC).isoformat(timespec="seconds"),
     }
-    logger.info("Saved %s (%d bytes)", dest, size)
+    logger.info("Saved %s (%d bytes)", config.display_path(dest), size)
     return record
 
 

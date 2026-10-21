@@ -65,7 +65,7 @@ def save_fig(fig: object, name: str, figures_dir: Path | None = None) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f"{name}.png"
     fig.savefig(path, dpi=130, bbox_inches="tight")  # type: ignore[attr-defined]
-    logger.info("Saved figure %s", path)
+    logger.info("Saved figure %s", config.display_path(path))
     return path
 
 

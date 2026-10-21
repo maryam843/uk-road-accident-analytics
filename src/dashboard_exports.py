@@ -256,7 +256,7 @@ def write_csv(frame: pd.DataFrame, name: str, out_dir: Path | None = None) -> Pa
     size = path.stat().st_size
     if size > MAX_BYTES:
         raise ValueError(f"{name} is {size:,} bytes, over the {MAX_BYTES:,}-byte limit")
-    logger.info("Wrote %s (%d bytes)", path, size)
+    logger.info("Wrote %s (%d bytes)", config.display_path(path), size)
     return path
 
 
