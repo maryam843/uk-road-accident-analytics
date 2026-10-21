@@ -3,6 +3,7 @@ data/raw/
 data/processed/
 data/kaggle/
 *.pbix
+*.parquet
 
 # CSV only allowed in dashboard/data and tests/fixtures
 *.csv
@@ -17,6 +18,14 @@ __pycache__/
 .ruff_cache/
 .env
 .venv/
+.coverage
+htmlcov/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
 
 # Local run logs
 logs_*.txt
