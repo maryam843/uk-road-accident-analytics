@@ -26,6 +26,8 @@ FIGURES_DIR: Path = Path(os.environ.get("FIGURES_DIR", REPO_ROOT / "reports" / "
 DASHBOARD_DATA_DIR: Path = Path(
     os.environ.get("DASHBOARD_DATA_DIR", REPO_ROOT / "dashboard" / "data")
 )
+# Small result files written by notebooks 00, 03 and 07 and read by src/dashboard_exports.py.
+RESULTS_DIR: Path = REPO_ROOT / "reports" / "results"
 
 RANDOM_STATE: int = 42
 

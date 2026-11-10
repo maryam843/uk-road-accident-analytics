@@ -9,6 +9,7 @@ data/kaggle/
 *.csv
 !dashboard/data/*.csv
 !tests/fixtures/*.csv
+!reports/results/*.csv
 
 # Python / Jupyter
 __pycache__/

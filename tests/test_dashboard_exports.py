@@ -1,52 +1,33 @@
-"""Tests for src.dashboard_exports (notebook-output parsing and the CSV builders)."""
+"""Tests for src.dashboard_exports (notebook result files and the CSV builders)."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from src import dashboard_exports as dx
 
 
-def _notebook_with_table(tmp_path: Path, frame: pd.DataFrame, text: str = "") -> Path:
-    html = frame.style.format("{:,}").to_html()
-    outputs = [{"output_type": "stream", "name": "stdout", "text": [text]},
-               {"output_type": "display_data", "metadata": {}, "data": {"text/html": html.splitlines(True)}}]
-    nb = {"cells": [{"cell_type": "code", "id": "7", "source": [], "outputs": outputs, "metadata": {},
-                     "execution_count": 1}], "metadata": {}, "nbformat": 4, "nbformat_minor": 5}
-    path = tmp_path / "nb.ipynb"
-    path.write_text(json.dumps(nb))
-    return path
+def test_missing_result_file_fails_with_a_clear_message(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError, match=r"sarima_order\.json is missing; run notebooks/03_forecasting\.ipynb"):
+        dx.sarima_order(tmp_path)
+    with pytest.raises(FileNotFoundError, match="07_anomalies"):
+        dx.result_path("anomalous_days_top10.csv", tmp_path)
 
 
-def test_notebook_tables_reads_styler_output(tmp_path: Path) -> None:
-    frame = pd.DataFrame({"rows": [198735, 0], "dups": [3, 34144]}, index=pd.Index([2005, 2012], name="year"))
-    path = _notebook_with_table(tmp_path, frame, text="hello\n")
-    parsed = dx.notebook_tables(path, "7")[0]
-    assert list(parsed.columns) == ["rows", "dups"]
-    assert list(parsed.index) == ["2005", "2012"]
-    assert dx.to_number(parsed["dups"]).tolist() == [3, 34144]
-    assert dx.notebook_text(path, "7") == "hello\n"
-    with pytest.raises(KeyError):
-        dx.notebook_text(path, "missing")
-
-
-def test_notebook_tables_multiindex_columns(tmp_path: Path) -> None:
-    cols = pd.MultiIndex.from_product([["Backtest", "Test"], ["MAE", "RMSE"]])
-    frame = pd.DataFrame([[1.5, 2.5, 3.5, 4.5]], index=["SARIMA"], columns=cols)
-    parsed = dx.notebook_tables(_notebook_with_table(tmp_path, frame), "7")[0]
-    assert list(parsed.columns) == ["MAE", "RMSE", "MAE", "RMSE"]
-    assert dx.to_number(parsed.iloc[:, 2]).loc["SARIMA"] == pytest.approx(3.5)
-
-
-def test_to_number_handles_commas_signs_and_percent() -> None:
-    got = dx.to_number(pd.Series(["198,735", "+23.46%", "60.9%", "-3", "x"]))
-    assert got.iloc[:4].tolist() == pytest.approx([198735, 0.2346, 0.609, -3])
-    assert np.isnan(got.iloc[4])
+def test_result_files_are_read(tmp_path: Path) -> None:
+    (tmp_path / "sarima_order.json").write_text(
+        json.dumps({"order": [1, 1, 1], "seasonal_order": [1, 0, 2, 12], "with_intercept": False}))
+    assert dx.sarima_order(tmp_path) == ((1, 1, 1), (1, 0, 2, 12), False)
+    pd.DataFrame({"year": [2005, 2007], "kaggle_rows": [10, 30]}).to_csv(tmp_path / "kaggle_rows_by_year.csv", index=False)
+    yearly = pd.DataFrame({"collisions": [10, 20, 30]}, index=pd.Index([2005, 2006, 2007], name="year"))
+    ras = pd.DataFrame({"collisions": [10, 20, 31]}, index=pd.Index([2005, 2006, 2007], name="year"))
+    trust = dx.data_trust(yearly, ras, tmp_path)
+    assert trust["kaggle_rows"].isna().tolist() == [False, True, False]
+    assert trust["pipeline_minus_ras0101"].tolist() == [0, 0, -1]
 
 
 def test_ksi_share_yearly_and_by_factor() -> None:

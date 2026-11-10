@@ -1,0 +1,5 @@
+model,test_mae
+ETS,602.344318
+SARIMA,529.390767
+Seasonal naive,1107.722222
+Trend x seasonal profile,482.141343

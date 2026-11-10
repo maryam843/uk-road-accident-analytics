@@ -40,15 +40,18 @@ python -m src.dashboard_exports        # ksi_share_yearly, ksi_rate_by_factor, f
 # notebook 08 (last section) writes hex_hotspots.csv and top_links_risk.csv
 ```
 
+`src/dashboard_exports.py` takes the notebook numbers it needs from small files in
+`reports/results/`, written by notebooks 00, 03 and 07. If a file is missing, it stops and names the notebook to run.
+
 | File | Grain | Built by | Source of the numbers |
 |---|---|---|---|
 | `ksi_share_yearly.csv` | year | `src/dashboard_exports.py` | yearly pipeline aggregates |
 | `ksi_rate_by_factor.csv` | factor × level, 2015-2019 | `src/dashboard_exports.py` | cleaned collisions |
 | `hex_hotspots.csv` | H3 resolution-7 hexagon | notebook 08 | notebook 05 Gi\* flags (recomputed), notebook 08 rates |
-| `forecast_vs_actual.csv` | month, 2017-2019 | `src/dashboard_exports.py` | SARIMA refitted with notebook 03's printed order; test MAE checked against notebook 03 |
+| `forecast_vs_actual.csv` | month, 2017-2019 | `src/dashboard_exports.py` | SARIMA refitted with notebook 03's order (`reports/results/sarima_order.json`); test MAE checked against `reports/results/forecast_test_mae.csv` |
 | `model_gains.csv` | decile of predicted risk | notebook 04 | LightGBM test predictions 2017-2019 |
-| `data_trust.csv` | year | `src/dashboard_exports.py` | Kaggle rows parsed from notebook 00's saved output; pipeline; RAS0101 |
-| `anomalous_days.csv` | day (top 10) | `src/dashboard_exports.py` | notebook 07's saved output, KSI counts from the pipeline (checked against 07) |
+| `data_trust.csv` | year | `src/dashboard_exports.py` | Kaggle rows from notebook 00 (`reports/results/kaggle_rows_by_year.csv`); pipeline; RAS0101 |
+| `anomalous_days.csv` | day (top 10) | `src/dashboard_exports.py` | notebook 07 (`reports/results/anomalous_days_top10.csv`), KSI counts from the pipeline (checked against 07) |
 | `top_links_risk.csv` | road link (top 50) | notebook 08 | AADF traffic counts and matched collisions |
 
 ## Data dictionary

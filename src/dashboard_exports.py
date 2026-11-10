@@ -1,4 +1,4 @@
-"""Extra Power BI exports (round 3) built from the pipeline output and the executed notebooks.
+"""Extra Power BI exports built from the pipeline output and small notebook result files.
 
 Usage::
 
@@ -10,24 +10,23 @@ Writes five CSVs to ``dashboard/data/``:
 * ``ksi_rate_by_factor.csv`` - KSI share with Wilson 95% intervals by speed limit, urban/rural
   and light condition, 2015-2019.
 * ``forecast_vs_actual.csv`` - monthly actuals 2017-2019 with the SARIMA forecast, its 80% and
-  95% intervals, and the seasonal naive forecast. The SARIMA order is read from notebook 03's
-  executed output and the result is checked against the test MAE printed there.
-* ``data_trust.csv`` - rows per year: Kaggle copy (copied from notebook 00's executed output),
-  this pipeline and RAS0101.
-* ``anomalous_days.csv`` - the 10 most anomalous days printed by notebook 07, with their KSI
-  counts from the pipeline.
+  95% intervals, and the seasonal naive forecast. The SARIMA order is read from
+  ``reports/results/sarima_order.json`` and the result is checked against the test MAE in
+  ``reports/results/forecast_test_mae.csv`` (both written by notebook 03).
+* ``data_trust.csv`` - rows per year: Kaggle copy (``reports/results/kaggle_rows_by_year.csv``,
+  written by notebook 00), this pipeline and RAS0101.
+* ``anomalous_days.csv`` - the 10 most anomalous days (``reports/results/anomalous_days_top10.csv``,
+  written by notebook 07), with their KSI counts from the pipeline.
 
 ``hex_hotspots.csv`` and ``top_links_risk.csv`` are written by notebook 08 and
-``model_gains.csv`` by notebook 04. Numbers that come from a notebook are parsed from the
-notebook's saved outputs, never retyped.
+``model_gains.csv`` by notebook 04. Numbers that come from a notebook are read from its result
+file, never retyped.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import re
-from html.parser import HTMLParser
 from pathlib import Path
 
 import numpy as np
@@ -37,95 +36,29 @@ from src import clean, config, evaluate
 
 logger = logging.getLogger(__name__)
 
-NOTEBOOKS = config.REPO_ROOT / "notebooks"
 FACTOR_YEARS = (2015, 2019)
 MAX_BYTES = config.DASHBOARD_MAX_BYTES
 
 
 # ---------------------------------------------------------------------------
-# Reading executed notebook outputs
+# Reading notebook result files
 # ---------------------------------------------------------------------------
-class _TableParser(HTMLParser):
-    """Collect the cells of every <table> as (tag, class, text) tuples, row by row."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.tables: list[list[list[tuple[str, str, str]]]] = []
-        self._cell: list[str] | None = None
-        self._attrs: tuple[str, str] = ("", "")
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag == "table":
-            self.tables.append([])
-        elif tag == "tr" and self.tables:
-            self.tables[-1].append([])
-        elif tag in ("th", "td") and self.tables:
-            self._cell = []
-            self._attrs = (tag, dict(attrs).get("class") or "")
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag in ("th", "td") and self._cell is not None:
-            self.tables[-1][-1].append((*self._attrs, "".join(self._cell).strip()))
-            self._cell = None
-
-    def handle_data(self, data: str) -> None:
-        if self._cell is not None:
-            self._cell.append(data)
+RESULT_FILES: dict[str, str] = {
+    "sarima_order.json": "03_forecasting",
+    "forecast_test_mae.csv": "03_forecasting",
+    "kaggle_rows_by_year.csv": "00_kaggle_data_audit",
+    "anomalous_days_top10.csv": "07_anomalies",
+}
 
 
-def _cell(notebook: Path, cell_id: str) -> dict:
-    nb = json.loads(Path(notebook).read_text())
-    cells = [c for c in nb["cells"] if c.get("id") == cell_id]
-    if len(cells) != 1:
-        raise KeyError(f"cell id {cell_id!r} not found in {notebook}")
-    if not cells[0].get("outputs"):
-        raise ValueError(f"cell {cell_id!r} in {notebook} has no saved outputs; execute the notebook")
-    return cells[0]
-
-
-def notebook_text(notebook: Path, cell_id: str) -> str:
-    """All stream / plain-text output of one executed notebook cell."""
-    parts = []
-    for out in _cell(notebook, cell_id)["outputs"]:
-        if "text" in out:
-            parts.append("".join(out["text"]))
-        elif "text/plain" in out.get("data", {}):
-            parts.append("".join(out["data"]["text/plain"]))
-    return "".join(parts)
-
-
-def notebook_tables(notebook: Path, cell_id: str) -> list[pd.DataFrame]:
-    """Every HTML table (pandas Styler or DataFrame) in one executed cell, as text frames.
-
-    Column names are the last header row's column headings; the index is the row headings.
-    Values stay as the formatted strings shown in the notebook.
-    """
-    frames = []
-    for out in _cell(notebook, cell_id)["outputs"]:
-        html = out.get("data", {}).get("text/html")
-        if html is None:
-            continue
-        parser = _TableParser()
-        parser.feed("".join(html) if isinstance(html, list) else html)
-        for rows in parser.tables:
-            header = [r for r in rows if r and all(t == "th" for t, _, _ in r)
-                      and any("col_heading" in c for _, c, _ in r)]
-            body = [r for r in rows if any(t == "td" for t, _, _ in r)]
-            if not header or not body:
-                continue
-            columns = [txt for _, cls, txt in header[-1] if "col_heading" in cls]  # deepest level
-            index = [next((txt for t, _, txt in r if t == "th"), None) for r in body]
-            values = [[txt for t, _, txt in r if t == "td"] for r in body]
-            frames.append(pd.DataFrame(values, index=index, columns=columns[-len(values[0]):]))
-    return frames
-
-
-def to_number(values: pd.Series) -> pd.Series:
-    """Parse formatted numbers such as ``198,735``, ``+0.00%`` or ``60.9%`` (percent -> share)."""
-    text = values.astype(str).str.strip()
-    pct = text.str.endswith("%")
-    num = pd.to_numeric(text.str.replace(r"[,%+]", "", regex=True), errors="coerce")
-    return num.where(~pct, num / 100)
+def result_path(name: str, results_dir: Path | None = None) -> Path:
+    """Path of one notebook result file; raises a clear error if it has not been written."""
+    path = Path(results_dir or config.RESULTS_DIR) / name
+    if not path.exists():
+        notebook = RESULT_FILES.get(name, "the notebook that writes it")
+        raise FileNotFoundError(
+            f"{config.display_path(path)} is missing; run notebooks/{notebook}.ipynb to write it")
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -167,26 +100,24 @@ def ksi_rate_by_factor(collisions: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows).round(6)
 
 
-def sarima_order_from_notebook(notebook: Path = NOTEBOOKS / "03_forecasting.ipynb"
-                               ) -> tuple[tuple[int, int, int], tuple[int, int, int, int], bool]:
-    """The SARIMA order printed by notebook 03 (chosen once on 2005-2016)."""
-    text = notebook_text(notebook, "6")
-    m = re.search(r"SARIMA\((\d+), (\d+), (\d+)\)x\((\d+), (\d+), (\d+), (\d+)\), intercept=(True|False)", text)
-    if m is None:
-        raise ValueError("SARIMA order not found in notebook 03 output")
-    g = [int(x) for x in m.groups()[:7]]
-    return (g[0], g[1], g[2]), (g[3], g[4], g[5], g[6]), m.group(8) == "True"
+def sarima_order(results_dir: Path | None = None
+                 ) -> tuple[tuple[int, int, int], tuple[int, int, int, int], bool]:
+    """The SARIMA order notebook 03 chose once on 2005-2016 (``sarima_order.json``)."""
+    saved = json.loads(result_path("sarima_order.json", results_dir).read_text())
+    order = tuple(int(x) for x in saved["order"])
+    seasonal = tuple(int(x) for x in saved["seasonal_order"])
+    return order, seasonal, bool(saved["with_intercept"])  # type: ignore[return-value]
 
 
-def forecast_vs_actual(monthly: pd.Series, notebook: Path = NOTEBOOKS / "03_forecasting.ipynb") -> pd.DataFrame:
+def forecast_vs_actual(monthly: pd.Series, results_dir: Path | None = None) -> pd.DataFrame:
     """2017-2019 actuals with SARIMA (80% / 95% intervals) and seasonal naive forecasts.
 
     The model is refitted on 2005-2016 with notebook 03's fixed order. Raises if the test MAE
-    of either forecast differs from the value printed in notebook 03 (2 decimals).
+    of either forecast differs from notebook 03's ``forecast_test_mae.csv`` (2 decimals).
     """
     import pmdarima as pm
 
-    order, seasonal_order, intercept = sarima_order_from_notebook(notebook)
+    order, seasonal_order, intercept = sarima_order(results_dir)
     train = monthly.loc[:config.FORECAST_TRAIN_END]
     test = monthly.loc[config.FORECAST_TEST_START:config.FORECAST_TEST_END]
     model = pm.ARIMA(order=order, seasonal_order=seasonal_order, with_intercept=intercept,
@@ -198,20 +129,18 @@ def forecast_vs_actual(monthly: pd.Series, notebook: Path = NOTEBOOKS / "03_fore
         out[f"sarima_{int(level * 100)}_lower"] = ci[:, 0]
         out[f"sarima_{int(level * 100)}_upper"] = ci[:, 1]
     out["seasonal_naive_forecast"] = evaluate.seasonal_naive(train, len(test)).to_numpy().astype(int)
-    printed = notebook_tables(notebook, "11")[0]
-    test_mae = to_number(printed.iloc[:, 3])  # columns: backtest MAE/RMSE/MAPE, test MAE/RMSE/MAPE
+    test_mae = pd.read_csv(result_path("forecast_test_mae.csv", results_dir), index_col="model")["test_mae"]
     for model_name, col in [("SARIMA", "sarima_forecast"), ("Seasonal naive", "seasonal_naive_forecast")]:
         mine = round(evaluate.mae(out["actual"], out[col]), 2)
         if mine != round(float(test_mae[model_name]), 2):
-            raise AssertionError(f"{model_name} test MAE {mine} differs from notebook 03 ({test_mae[model_name]})")
+            raise AssertionError(f"{model_name} test MAE {mine} differs from notebook 03 ({test_mae[model_name]:.2f})")
     return out.round(3)
 
 
-def data_trust(yearly: pd.DataFrame, ras: pd.DataFrame,
-               notebook: Path = NOTEBOOKS / "00_kaggle_data_audit.ipynb") -> pd.DataFrame:
-    """Rows per year: Kaggle copy (from notebook 00's output), this pipeline, RAS0101."""
-    side = notebook_tables(notebook, "18")[0]
-    kaggle = to_number(side["kaggle_rows"]).astype("Int64")
+def data_trust(yearly: pd.DataFrame, ras: pd.DataFrame, results_dir: Path | None = None) -> pd.DataFrame:
+    """Rows per year: Kaggle copy (notebook 00's ``kaggle_rows_by_year.csv``), this pipeline, RAS0101."""
+    kaggle = pd.read_csv(result_path("kaggle_rows_by_year.csv", results_dir), index_col="year")["kaggle_rows"]
+    kaggle = kaggle.astype("Int64")
     kaggle.index = kaggle.index.astype(int)
     years = yearly.index.astype(int)
     out = pd.DataFrame({"year": years,
@@ -223,27 +152,28 @@ def data_trust(yearly: pd.DataFrame, ras: pd.DataFrame,
     return out
 
 
-def anomalous_days(collisions: pd.DataFrame,
-                   notebook: Path = NOTEBOOKS / "07_anomalies.ipynb") -> pd.DataFrame:
-    """Top 10 anomalous days from notebook 07's output, with KSI counts from the pipeline.
+def anomalous_days(collisions: pd.DataFrame, results_dir: Path | None = None) -> pd.DataFrame:
+    """Top 10 anomalous days from notebook 07's ``anomalous_days_top10.csv``, with KSI counts.
 
-    Raises if the pipeline's collision count or KSI share for a day disagrees with the
-    notebook's printed values.
+    Raises if the pipeline's collision count or KSI share for a day disagrees with the values
+    notebook 07 saved. Ratios keep the precision notebook 07 displays (2 decimals for the count
+    ratio, 3 for shares).
     """
-    top = notebook_tables(notebook, "24")[0]
+    top = pd.read_csv(result_path("anomalous_days_top10.csv", results_dir), index_col="date")
     out = pd.DataFrame({"rank": np.arange(1, len(top) + 1), "date": top.index, "weekday": top["weekday"].to_numpy()})
     day = collisions.dropna(subset=["date"]).groupby(collisions["date"].dt.strftime("%Y-%m-%d"))["ksi"]
     counts = day.agg(["size", "sum", "count"]).reindex(out["date"])  # as notebook 07: mean over non-missing
     out["collisions"] = counts["size"].astype(int).to_numpy()
     out["ksi"] = counts["sum"].astype(int).to_numpy()
     out["ksi_share"] = (counts["sum"] / counts["count"]).to_numpy()
-    if not np.array_equal(out["collisions"].to_numpy(), to_number(top["collisions"]).to_numpy()):
+    if not np.array_equal(out["collisions"].to_numpy(), top["collisions"].to_numpy()):
         raise AssertionError("collision counts differ from notebook 07")
-    if not np.allclose(out["ksi_share"].round(3), to_number(top["ksi_share"]), atol=1e-9):
+    if not np.allclose(out["ksi_share"].round(3), top["ksi_share"].round(3), atol=1e-9):
         raise AssertionError("KSI shares differ from notebook 07")
-    for col in ["count_ratio", "ice_snow", "snow", "fog", "dark"]:
-        out[f"{col}_share" if col != "count_ratio" else col] = to_number(top[col]).to_numpy()
-    out["weekend"] = to_number(top["weekend"]).astype(int).to_numpy()
+    out["count_ratio"] = top["count_ratio"].round(2).to_numpy()
+    for col in ["ice_snow", "snow", "fog", "dark"]:
+        out[f"{col}_share"] = top[col].round(3).to_numpy()
+    out["weekend"] = top["weekend"].astype(int).to_numpy()
     out["most_unusual_feature"] = top["most_unusual"].to_numpy()
     return out.round(6)
 
