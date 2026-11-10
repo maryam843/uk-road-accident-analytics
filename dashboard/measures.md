@@ -117,7 +117,7 @@ DIVIDE ( SUM ( by_speed_limit[ksi_collisions_adjusted] ), SUM ( by_speed_limit[c
 
 Repeat with `by_light_conditions`, `by_road_type` and `by_region` (same column names).
 
-## 7. Round 3 tables: KSI share, gains, hotspots, data trust
+## 7. More tables: KSI share, gains, hotspots, data trust
 
 These tables do not join to the Date table (no shared grain), except `ksi_share_yearly[year]`
 and `data_trust[year]`, which can relate to a `Date[Year]` column if wanted.
